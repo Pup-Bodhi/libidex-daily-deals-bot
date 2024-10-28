@@ -178,6 +178,8 @@ async function getUserWatchlist(msg) {
 
     let userList = '';
 
+    if (watchlist.length <= 0) return bot.sendMessage(msg.chat.id, `<i>You have no items on your watchlist.</i>`, { reply_to_message_id: msg.message_id, parse_mode: 'HTML', disable_web_page_preview: true });
+
     watchlist.forEach(item => {
         if (item.users.includes(msg.from.username)) userList = + `\n- <a href="${item.url}">${item.name} (#${item.id})</a>`
     })
@@ -193,7 +195,7 @@ async function removeChannel(msg) {
     delete database[msg.chat.id];
     bot.sendMessage(msg.chat.id, `
 <b>Unsubscribed from Daily Deal alerts.</b>
-You will no longer recieve alerts when new Daily Deals have been posted. Use <code>/start</code> to resubscribe.
+You will no longer recieve alerts when new Daily Deals have been posted. Use /start to resubscribe.
 
 Thank you for using me!
 
@@ -227,8 +229,8 @@ async function changeChannelCurrency(msg) {
     let msgText = msg.text.replace('/currency ', '');
     msg.text.replace('/currency ', '');
 
-    watchlist = JSON.parse(fs.readFileSync('watchlist.json'));
-
+    await getWatchlist();
+    
     let currencyArray = msgText.split(' ');
 
     currencyArray.forEach(currency => {
