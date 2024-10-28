@@ -49,7 +49,7 @@ const bot = new TelegramBot(process.env.TOKEN, { polling: true });
 console.log("Started!")
 
 // For testing only!
-await getDailyDeal();
+//await getDailyDeal();
 
 const job = schedule.scheduleJob('0 21 * * *', async function () {
     await getDailyDeal();
