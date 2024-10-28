@@ -49,7 +49,7 @@ const bot = new TelegramBot(process.env.TOKEN, { polling: true });
 console.log("Started!")
 
 // For testing only!
-//await getDailyDeal();
+await getDailyDeal();
 
 const job = schedule.scheduleJob('0 21 * * *', async function () {
     await getDailyDeal();
@@ -66,13 +66,15 @@ bot.onText(/\/help/, async (msg) => sendHelpText(msg));
 
 async function addChannel(msg) {
 
+    console.log(msg)
+
     await getDatabase();
 
     if (!database[msg.chat.id]) database[msg.chat.id] = ['USD', 'EUR'];
     bot.sendMessage(msg.chat.id, `
 <b>Welcome!</b>
 
-This bot will send you a private message every time the Libidex Daily Deal is updated. Add things you're looking to buy using <code>/add &lt;Libidex Item URL&gt;</code> and get a special ping when that item is the Daily Deal!
+This bot will send you a ${(getChatType(msg) === 'DM' ? getChatType(msg) : 'message in your ' + getChatType(msg))} every time the Libidex Daily Deal is updated. Add things you're looking to buy using <code>/add &lt;Libidex Item URL&gt;</code> and get a special ping when that item is the Daily Deal!
 
 <i>For example...</i>
 <code>/add https://libidex.com/neo-catsuit-no-pouch.html</code> adds the <a href="https://libidex.com/neo-catsuit-no-pouch.html">Neo Catsuit (no pouch)</a> to your watchlist.
@@ -81,12 +83,10 @@ You can also change what the currencies for the auto price conversion. Most ISO 
 
 <i>For example...</i>
 <code>/currency USD EUR CAD</code> will convert the Libidex price to US Dollars, Euros, and Canadian Dollars at the current exchange rate.
-
-This bot also works very well on goups and channels! Invite this bot so that all you friends and fellow rubberists can get alerted of the new Daily Deal!
-
+${(getChatType(msg) === "DM") ? "\nThis bot also works very well in groups! Invite this bot so that all you friends and fellow rubberists can get alerted of the new Daily Deal!\n" : ""}
 /help for all commands.
 
-<i>Bot created by <a href="https://pupbodhi.com">Pup_Bodhi</a></i>
+<i>Bot created by <a href="https://t.me/pup_bodhi">Pup_Bodhi</a>. Open source on <a href="https://github.com/pup-bodhi/libidex-daily-deals-bot">GitHub!</a></i>
                 `, { parse_mode: 'HTML', disable_web_page_preview: true });
 
     await setDatabase();
@@ -107,8 +107,6 @@ async function addToWatchlist(msg) {
 <b>Usage:</b> <code>/add &lt;Libidex Item URL&gt;</code>
         `, { reply_to_message_id: msg.message_id, parse_mode: 'HTML' })
 
-    watchlist = JSON.parse(fs.readFileSync('watchlist.json'));
-
     try {
         const itemPage = await (await fetch(msgText)).text();
         const itemParse = parse(itemPage);
@@ -116,14 +114,15 @@ async function addToWatchlist(msg) {
         const name = itemParse.querySelector('.product-info-main').querySelector('span[itemprop="name"]').innerHTML;
 
         if (!watchlist[productId]) watchlist[productId] = { id: productId, name: name, url: msgText, users: [] };
-        watchlist[productId].users.push({ id: msg.from.id, username: msg.from.username })
+        if (!watchlist[productId].users.some(user => user.username === msg.from.username)) watchlist[productId].users.push({ id: msg.from.id, username: msg.from.username })
 
         await setWatchlist();
 
         bot.sendMessage(msg.chat.id, `
         <a href="${msgText}"><b>${name}</b> (#${productId})</a><i> added to your personal watchlist! You will get a ping when your item is the daily deal.</i>
         `, { reply_to_message_id: msg.message_id, parse_mode: 'HTML', disable_web_page_preview: true });
-    } catch {
+    } catch (e) {
+        console.error(e)
         bot.sendMessage(msg.chat.id, `
             Could not parse Libidex item. Are you sure you have a valid Libidex URL?
             `, { reply_to_message_id: msg.message_id, parse_mode: 'HTML', disable_web_page_preview: true });
@@ -180,8 +179,8 @@ async function getUserWatchlist(msg) {
 
     if (Object.keys(watchlist).length <= 0) return bot.sendMessage(msg.chat.id, `<i>You have no items on your watchlist.</i>`, { reply_to_message_id: msg.message_id, parse_mode: 'HTML', disable_web_page_preview: true });
 
-    watchlist.forEach(item => {
-        if (item.users.includes(msg.from.username)) userList = + `\n- <a href="${item.url}">${item.name} (#${item.id})</a>`
+    Object.keys(watchlist).forEach(item => {
+        if (watchlist[item].users.some(users => users.username === msg.from.username)) userList += `\n- <a href="${watchlist[item].url}">${watchlist[item].name} (#${watchlist[item].id})</a>`
     })
 
     if (userList === '') return bot.sendMessage(msg.chat.id, `<i>You have no items on your watchlist.</i>`, { reply_to_message_id: msg.message_id, parse_mode: 'HTML', disable_web_page_preview: true });
@@ -199,7 +198,7 @@ You will no longer recieve alerts when new Daily Deals have been posted. Use /st
 
 Thank you for using me!
 
-<i>Bot created by <a href="https://pupbodhi.com">Pup_Bodhi</a></i>
+<i>Bot created by <a href="https://t.me/pup_bodhi">Pup_Bodhi</a></i>
                 `, { parse_mode: 'HTML', disable_web_page_preview: true });
 
     await setDatabase();
@@ -208,14 +207,14 @@ Thank you for using me!
 async function sendHelpText(msg) {
     bot.sendMessage(msg.chat.id, `
     <b>Libidex Deals Bot</b>
-<i>A bot to fetch and alert Telegram channels of new items in Libidex's Daily Deal.</i>\n
+<i>A bot to fetch and alert Telegram groups of new items in Libidex's Daily Deal.</i>\n
 <b>Commands:</b>
-- <code>/start</code>: Subscribes your DM/group/channel to Daily Deal alerts.
+- <code>/start</code>: Subscribes your DM/group to Daily Deal alerts.
 - <code>/currency &lt;ISO 4217 Codes&gt;</code>: Changes auto price conversion currency. Use ISO 4217 codes, e.g. USD, EUR, CAD etc...
 - <code>/watchlist</code>: View your personal item watchlist.
 - <code>/add &lt;Libidex Item URL&gt;</code>: Add an item to your watchlist. Get pinged when an item on your list becomes the Daily Deal!
 - <code>/remove &lt;Libidex Item URL&gt;</code>: Removes and item from your watchlist.
-- <code>/delete</code>: Unsubscribes your DM/group/channel from Daily Deal alerts.
+- <code>/delete</code>: Unsubscribes your DM/group from Daily Deal alerts.
 - <code>/help</code>: Get help with commands. If you need even more help.\n
 Bot created by <a href="https://pupbodhi.com">Pup_Bodhi</a>
             `, { reply_to_message_id: msg.message_id, parse_mode: 'HTML', disable_web_page_preview: true });
@@ -227,9 +226,17 @@ async function changeChannelCurrency(msg) {
     if (!await checkDatabase(msg.chat.id)) return;
 
     let msgText = msg.text.replace('/currency ', '');
-    msg.text.replace('/currency ', '');
 
     let currencyArray = msgText.split(' ');
+
+    if (currencyArray.length <= 0 || msgText === '/currency') { 
+        database[msg.chat.id] = [];
+        await setDatabase();
+        return bot.sendMessage(msg.chat.id, `
+<i>Removed all currency conversions.</i>
+                            `, { reply_to_message_id: msg.message_id, parse_mode: 'HTML' })
+    }
+
 
     currencyArray.forEach(currency => {
         if (!currencies[currency]) return bot.sendMessage(msg.chat.id, `
@@ -241,7 +248,7 @@ To add multiple currencies, seperate each currency code with a space. Ex: <code>
     database[msg.chat.id] = currencyArray;
     await setDatabase();
     bot.sendMessage(msg.chat.id, `
-New currencies set!
+<i>New currencies set!</i>
                     `, { reply_to_message_id: msg.message_id, parse_mode: 'HTML' })
 }
 
@@ -276,7 +283,14 @@ async function getDailyDeal() {
                 database[group].forEach(currency => {
                     conversionText += `\n${currency.toUpperCase()}  <s>${currencies[currency.toUpperCase()]}${(originalPrice * exchangeRateInfo.rates[currency.toUpperCase()]).toFixed(2)}</s>  ->  ${currencies[currency.toUpperCase()]}${(newPrice * exchangeRateInfo.rates[currency.toUpperCase()]).toFixed(2)}`
                 })
-                let text = `<i>A new Libidex Daily Deal item has been posted!</i>\n\n<b><a href="${itemLink.getAttribute('href')}">${name} (#${productId})</a></b>\nGBP  <s>£${originalPrice}</s>  ->  £${newPrice}${conversionText}\n\n<i>Bot created by <a href="https://pupbodhi.com">Pup_Bodhi</a></i>`
+                let text = `
+<i>A new Libidex Daily Deal item has been posted!</i>
+
+<b><a href="${itemLink.getAttribute('href')}">${name} (#${productId})</a></b>
+GBP  <s>£${originalPrice}</s>  ->  £${newPrice}${conversionText}
+
+<i>Bot created by <a href="https://t.me/pup_bodhi">Pup_Bodhi</a>. Open source on <a href="https://github.com/pup-bodhi/libidex-daily-deals-bot">GitHub!</a></i>
+`
                 try { bot.sendMessage(group, text, { parse_mode: 'HTML' }); } catch { };
             })
 
@@ -284,43 +298,19 @@ async function getDailyDeal() {
 
             if (!watchlist[productId]) return resolve()
 
-            Object.keys(database).forEach(channel => {
-                let watchlistText = `<b>This item is on someone's watchlist!</b>\n\n`;
-                watchlist[productId].users.forEach(user => {
-                    let member = bot.getChatMember(channel, user.id);
-                    if (member) watchlistText += `@${user.username}\n`;
+            setTimeout(() => {
+                Object.keys(database).forEach(channel => {
+                    let watchlistText = `<b>This item is on someone's watchlist!</b>\n\n`;
+                    watchlist[productId].users.forEach(user => {
+                        let member = bot.getChatMember(channel, user.id);
+                        if (member) watchlistText += `@${user.username}\n`;
+                    })
+                    if (watchlistText !== `<b>This item is on someone's watchlist!</b>\n\n`)
+                        bot.sendMessage(channel, watchlistText, { parse_mode: 'HTML' });
                 })
-                if (watchlistText !== `<b>This item is on someone's watchlist!</b>\n\n`)
-                    bot.sendMessage(channel, watchlistText, { parse_mode: 'HTML' });
-            })
-
-            console.log('Alerted watchlist users!')
-
-            // watchlist[productId].d.forEach(user => {
-            //     database.forEach(channel => {
-            //         let member = bot.getChatMember(channel, user);
-            //     })
-            // })
-
-            // Object.keys(watchlist).forEach(user => {
-            //     watchlist[user].items.forEach(item => {
-            //         if (item.id === productId) {
-            //             watchlist[user].channels.forEach(channel => {
-            //                 if (!pings[channel]) pings[channel] = [];
-            //                 pings[channel].push(user);
-            //             })
-            //         }
-            //     })
-            // })
-
-            // for (let ping in pings) {
-
-            //     pings[ping].forEach(user => {
-            //         watchlistText += `@${user}\n`;
-            //     })
-
-            //     await bot.sendMessage(parseInt(ping), watchlistText, { parse_mode: 'HTML' });
-            // }
+    
+                console.log('Alerted watchlist users!')
+            }, 2000)
 
             resolve();
 
@@ -332,6 +322,14 @@ async function getDailyDeal() {
             resolve();
         }
     })
+}
+
+function getChatType(msg) {
+    switch (msg.chat.type) {
+        case 'private': return 'DM'; break;
+        case 'group': return 'group'; break;
+        case 'channel': return 'channel'; break;
+    }
 }
 
 async function checkDatabase(chatId) {
