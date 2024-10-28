@@ -229,17 +229,20 @@ async function changeChannelCurrency(msg) {
     let msgText = msg.text.replace('/currency ', '');
     msg.text.replace('/currency ', '');
 
-    await getWatchlist();
-
     let currencyArray = msgText.split(' ');
 
     currencyArray.forEach(currency => {
         if (!currencies[currency]) return bot.sendMessage(msg.chat.id, `
-            <i>Argument is not a valid ISO 4217 currency!</i>\n
-    <b>Usage:</b> <code>/currency &lt;ISO 4217 Codes&gt;</code>
-    To add multiple currencies, seperate each currency code with a space. Ex: <code>/currency USD EUR</code>
+<i>Argument is not a valid ISO 4217 currency!</i>\n
+<b>Usage:</b> <code>/currency &lt;ISO 4217 Codes&gt;</code>
+To add multiple currencies, seperate each currency code with a space. Ex: <code>/currency USD EUR</code>
             `, { reply_to_message_id: msg.message_id, parse_mode: 'HTML' })
     })
+    database[msg.chat.id] = currencyArray;
+    await setDatabase();
+    bot.sendMessage(msg.chat.id, `
+New currencies set!
+                    `, { reply_to_message_id: msg.message_id, parse_mode: 'HTML' })
 }
 
 
