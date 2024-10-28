@@ -178,7 +178,7 @@ async function getUserWatchlist(msg) {
 
     let userList = '';
 
-    if (watchlist.length <= 0) return bot.sendMessage(msg.chat.id, `<i>You have no items on your watchlist.</i>`, { reply_to_message_id: msg.message_id, parse_mode: 'HTML', disable_web_page_preview: true });
+    if (Object.keys(watchlist).length <= 0) return bot.sendMessage(msg.chat.id, `<i>You have no items on your watchlist.</i>`, { reply_to_message_id: msg.message_id, parse_mode: 'HTML', disable_web_page_preview: true });
 
     watchlist.forEach(item => {
         if (item.users.includes(msg.from.username)) userList = + `\n- <a href="${item.url}">${item.name} (#${item.id})</a>`
