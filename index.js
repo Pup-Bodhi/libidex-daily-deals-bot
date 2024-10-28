@@ -193,7 +193,7 @@ async function removeChannel(msg) {
     delete database[msg.chat.id];
     bot.sendMessage(msg.chat.id, `
 <b>Unsubscribed from Daily Deal alerts.</b>
-You will no longer recieve alerts when new Daily Deals have been posted. Use <ode>/start</code> to resubscribe.
+You will no longer recieve alerts when new Daily Deals have been posted. Use <code>/start</code> to resubscribe.
 
 Thank you for using me!
 
