@@ -230,7 +230,7 @@ async function changeChannelCurrency(msg) {
     msg.text.replace('/currency ', '');
 
     await getWatchlist();
-    
+
     let currencyArray = msgText.split(' ');
 
     currencyArray.forEach(currency => {
@@ -240,22 +240,6 @@ async function changeChannelCurrency(msg) {
     To add multiple currencies, seperate each currency code with a space. Ex: <code>/currency USD EUR</code>
             `, { reply_to_message_id: msg.message_id, parse_mode: 'HTML' })
     })
-
-
-    const itemPage = await (await fetch(msgText)).text();
-    const itemParse = parse(itemPage);
-    const productId = Number(itemParse.querySelector('.price-final_price').getAttribute('data-product-id'));
-    const name = itemParse.querySelector('.product-info-main').querySelector('span[itemprop="name"]').innerHTML;
-
-    if (!watchlist[productId]) watchlist[productId] = { id: productId, name: name, url: msgText, users: [] };
-    watchlist[productId].users.push({ id: msg.from.id, username: msg.from.username })
-
-    await setWatchlist();
-
-    bot.sendMessage(msg.chat.id, `
-        <a href="${msgText}"><b>${name}</b> (#${productId})</a><i> added to your personal watchlist! You will get a ping when your item is the daily deal.</i>
-        `, { reply_to_message_id: msg.message_id, parse_mode: 'HTML', disable_web_page_preview: true });
-
 }
 
 
